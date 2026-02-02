@@ -17,10 +17,14 @@ const Profile = () => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        setProfileForm(profile);
-        setBalanceForm(balance);
+        if (balance.cashAmount !== undefined) {
+            setBalanceForm({
+                cashAmount: balance.cashAmount || '',
+                onlineAmount: balance.onlineAmount || ''
+            });
+        }
         loadBudgetsAndRecurring();
-    }, [profile, balance]);
+    }, [balance]);
 
     const loadBudgetsAndRecurring = async () => {
         try {
@@ -35,32 +39,6 @@ const Profile = () => {
         }
     };
 
-    const handleUpdateProfile = async (e) => {
-        e.preventDefault();
-        setError('');
-        setSuccess('');
-
-        const nameError = validateRequired(profileForm.name, 'Name');
-        const emailError = validateEmail(profileForm.email);
-
-        if (nameError || emailError) {
-            setError(nameError || emailError);
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            await updateProfile(profileForm);
-            setProfile(profileForm);
-            setSuccess('Profile updated successfully!');
-        } catch (err) {
-            setError(err.response?.data?.error || 'Failed to update profile');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleUpdateBalance = async (e) => {
         e.preventDefault();
         setError('');
@@ -69,8 +47,12 @@ const Profile = () => {
         setLoading(true);
 
         try {
-            await updateBalance(balanceForm);
-            setBalance(balanceForm);
+            const updatedBalance = {
+                cashAmount: parseFloat(balanceForm.cashAmount) || 0,
+                onlineAmount: parseFloat(balanceForm.onlineAmount) || 0
+            };
+            await updateBalance(updatedBalance);
+            setBalance(updatedBalance);
             setSuccess('Balance updated successfully!');
             refresh();
         } catch (err) {
@@ -158,34 +140,19 @@ const Profile = () => {
                 {error && <div className="error-message">{error}</div>}
                 {success && <div style={{ padding: '0.75rem 1rem', background: 'rgba(16, 163, 127, 0.1)', border: '1px solid var(--accent)', borderRadius: '0.5rem', color: 'var(--accent)', marginBottom: '1rem' }}>{success}</div>}
 
-                {/* Profile Section */}
+                {/* Profile Info (Read-Only) */}
                 <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border)', marginBottom: '2rem' }}>
-                    <h2>Personal Information</h2>
-                    <form onSubmit={handleUpdateProfile}>
-                        <div className="form-group">
-                            <label>Name</label>
-                            <input
-                                type="text"
-                                value={profileForm.name}
-                                onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                                required
-                            />
+                    <h2>Account Information</h2>
+                    <div style={{ marginTop: '1rem' }}>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Name</div>
+                            <div style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{profile?.name || 'User'}</div>
                         </div>
-
-                        <div className="form-group">
-                            <label>Email</label>
-                            <input
-                                type="email"
-                                value={profileForm.email}
-                                onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                                required
-                            />
+                        <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Email</div>
+                            <div style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{profile?.email || 'Not set'}</div>
                         </div>
-
-                        <button type="submit" className="btn-primary" disabled={loading}>
-                            {loading ? 'Updating...' : 'Update Profile'}
-                        </button>
-                    </form>
+                    </div>
                 </div>
 
                 {/* Balance Section */}
@@ -194,22 +161,34 @@ const Profile = () => {
                     <form onSubmit={handleUpdateBalance}>
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Cash Amount</label>
+                                <label>Cash Amount (₹)</label>
                                 <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={balanceForm.cashAmount}
-                                    onChange={(e) => setBalanceForm({ ...balanceForm, cashAmount: parseFloat(e.target.value) || 0 })}
-                                    step="0.01"
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                            setBalanceForm({ ...balanceForm, cashAmount: value });
+                                        }
+                                    }}
+                                    placeholder="0.00"
                                 />
                             </div>
 
                             <div className="form-group">
-                                <label>Online Amount</label>
+                                <label>Online Amount (₹)</label>
                                 <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={balanceForm.onlineAmount}
-                                    onChange={(e) => setBalanceForm({ ...balanceForm, onlineAmount: parseFloat(e.target.value) || 0 })}
-                                    step="0.01"
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                            setBalanceForm({ ...balanceForm, onlineAmount: value });
+                                        }
+                                    }}
+                                    placeholder="0.00"
                                 />
                             </div>
                         </div>
