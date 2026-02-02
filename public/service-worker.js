@@ -1,4 +1,4 @@
-const CACHE_NAME = 'expense-logger-v1';
+const CACHE_NAME = 'expense-logger-v2';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -7,6 +7,9 @@ const urlsToCache = [
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
+    // Force the waiting service worker to become the active service worker
+    self.skipWaiting();
+
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -14,7 +17,6 @@ self.addEventListener('install', (event) => {
                 return cache.addAll(urlsToCache);
             })
     );
-    self.skipWaiting();
 });
 
 // Activate event - clean up old caches
@@ -29,12 +31,14 @@ self.addEventListener('activate', (event) => {
                     }
                 })
             );
+        }).then(() => {
+            // Take control of all pages immediately
+            return self.clients.claim();
         })
     );
-    self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - NETWORK FIRST for HTML/JS/CSS (development friendly)
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') {
@@ -46,24 +50,46 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    const url = new URL(event.request.url);
+
+    // Network first for HTML, JS, CSS (always get latest)
+    if (event.request.url.endsWith('.html') ||
+        event.request.url.endsWith('.js') ||
+        event.request.url.endsWith('.css') ||
+        url.pathname === '/') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // Clone and update cache
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                    return response;
+                })
+                .catch(() => {
+                    // Fallback to cache if network fails
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
+
+    // Cache first for other resources (images, fonts, etc.)
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
-                // Cache hit - return response
                 if (response) {
                     return response;
                 }
 
-                // Clone the request
                 const fetchRequest = event.request.clone();
 
                 return fetch(fetchRequest).then((response) => {
-                    // Check if valid response
                     if (!response || response.status !== 200 || response.type !== 'basic') {
                         return response;
                     }
 
-                    // Clone the response
                     const responseToCache = response.clone();
 
                     caches.open(CACHE_NAME)
@@ -75,7 +101,6 @@ self.addEventListener('fetch', (event) => {
                 });
             })
             .catch(() => {
-                // Offline fallback
                 return caches.match('/index.html');
             })
     );
