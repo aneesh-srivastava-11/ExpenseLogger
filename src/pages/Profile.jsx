@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import Navigation from '../components/Navigation';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { updateProfile, updateBalance, getBudgets, saveBudget, deleteBudget, getRecurring, createRecurring, deleteRecurring } from '../utils/api';
 import { validateRequired, validateEmail, validateAmount } from '../utils/validation';
 
 const Profile = () => {
     const { profile, setProfile, balance, setBalance, refresh } = useApp();
+    const { currentUser } = useAuth();
     const [profileForm, setProfileForm] = useState({ name: '', email: '' });
     const [balanceForm, setBalanceForm] = useState({ cashAmount: 0, onlineAmount: 0 });
     const [budgets, setBudgets] = useState([]);
@@ -130,6 +132,10 @@ const Profile = () => {
 
     const formatCurrency = (amount) => `₹${amount.toFixed(2)}`;
 
+    // Get display name and email - fallback to Firebase Auth if Firestore profile is empty
+    const displayName = profile?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
+    const displayEmail = profile?.email || currentUser?.email || 'Not set';
+
     return (
         <div className="app">
             <Navigation />
@@ -146,11 +152,11 @@ const Profile = () => {
                     <div style={{ marginTop: '1rem' }}>
                         <div style={{ marginBottom: '1rem' }}>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Name</div>
-                            <div style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{profile?.name || 'User'}</div>
+                            <div style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{displayName}</div>
                         </div>
                         <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Email</div>
-                            <div style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{profile?.email || 'Not set'}</div>
+                            <div style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{displayEmail}</div>
                         </div>
                     </div>
                 </div>
