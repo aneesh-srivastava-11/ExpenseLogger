@@ -40,6 +40,12 @@ app.get('*', (req, res) => {
     res.sendFile('index.html', { root: 'dist' });
 });
 
-app.listen(PORT, () => {
-    console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+// Only start server if not in Vercel (local development)
+if (process.env.VERCEL !== '1') {
+    app.listen(PORT, () => {
+        console.log(`✅ Server running on http://localhost:${PORT}`);
+    });
+}
+
+// Export for Vercel serverless
+export default app;
