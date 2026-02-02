@@ -10,7 +10,8 @@ router.get('/', async (req, res) => {
         const userDoc = await db.collection('users').doc(uid).get();
 
         if (!userDoc.exists) {
-            return res.status(404).json({ error: 'Profile not found' });
+            // Return default profile instead of 404 to avoid errors
+            return res.json({ name: '', email: '' });
         }
 
         res.json(userDoc.data());
