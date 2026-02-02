@@ -10,7 +10,12 @@
         },
         {
             "src": "api/index.js",
-            "use": "@vercel/node"
+            "use": "@vercel/node",
+            "config": {
+                "includeFiles": [
+                    "server/**"
+                ]
+            }
         }
     ],
     "rewrites": [
