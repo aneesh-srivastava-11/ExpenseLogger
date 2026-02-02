@@ -90,13 +90,12 @@ router.post('/apply', async (req, res) => {
         const { uid } = req.user;
         const now = new Date().toISOString();
 
-        // Get all active recurring expenses
+        // Get all active recurring expenses (removed the nextDue filter to avoid composite index)
         const snapshot = await db
             .collection('users')
             .doc(uid)
             .collection('recurring')
             .where('active', '==', true)
-            .where('nextDue', '<=', now)
             .get();
 
         const applied = [];
@@ -104,52 +103,55 @@ router.post('/apply', async (req, res) => {
         for (const doc of snapshot.docs) {
             const recurring = doc.data();
 
-            // Create expense
-            const expenseData = {
-                amount: recurring.amount,
-                type: recurring.type,
-                category: recurring.category,
-                description: `[Recurring] ${recurring.description}`,
-                date: now,
-                createdAt: now,
-            };
+            // Filter in code instead of query to avoid Firestore index requirement
+            if (recurring.nextDue && recurring.nextDue <= now) {
+                // Create expense
+                const expenseData = {
+                    amount: recurring.amount,
+                    type: recurring.type,
+                    category: recurring.category,
+                    description: `[Recurring] ${recurring.description}`,
+                    date: now,
+                    createdAt: now,
+                };
 
-            await db.collection('users').doc(uid).collection('expenses').add(expenseData);
+                await db.collection('users').doc(uid).collection('expenses').add(expenseData);
 
-            // Update balance
-            const balanceRef = db.collection('users').doc(uid).collection('balance').doc('current');
-            const balanceDoc = await balanceRef.get();
+                // Update balance
+                const balanceRef = db.collection('users').doc(uid).collection('balance').doc('current');
+                const balanceDoc = await balanceRef.get();
 
-            if (balanceDoc.exists) {
-                const currentBalance = balanceDoc.data();
-                const updateField = recurring.type === 'cash' ? 'cashAmount' : 'onlineAmount';
+                if (balanceDoc.exists) {
+                    const currentBalance = balanceDoc.data();
+                    const updateField = recurring.type === 'cash' ? 'cashAmount' : 'onlineAmount';
 
-                await balanceRef.update({
-                    [updateField]: currentBalance[updateField] - recurring.amount,
-                    updatedAt: now,
+                    await balanceRef.update({
+                        [updateField]: currentBalance[updateField] - recurring.amount,
+                        updatedAt: now,
+                    });
+                }
+
+                // Calculate next due date
+                const nextDue = new Date(recurring.nextDue);
+
+                if (recurring.frequency === 'daily') {
+                    nextDue.setDate(nextDue.getDate() + 1);
+                } else if (recurring.frequency === 'weekly') {
+                    nextDue.setDate(nextDue.getDate() + 7);
+                } else if (recurring.frequency === 'monthly') {
+                    nextDue.setMonth(nextDue.getMonth() + 1);
+                } else if (recurring.frequency === 'yearly') {
+                    nextDue.setFullYear(nextDue.getFullYear() + 1);
+                }
+
+                // Update recurring expense with new nextDue
+                await doc.ref.update({ nextDue: nextDue.toISOString() });
+
+                applied.push({
+                    id: doc.id,
+                    ...recurring,
                 });
             }
-
-            // Calculate next due date
-            const nextDue = new Date(recurring.nextDue);
-
-            if (recurring.frequency === 'daily') {
-                nextDue.setDate(nextDue.getDate() + 1);
-            } else if (recurring.frequency === 'weekly') {
-                nextDue.setDate(nextDue.getDate() + 7);
-            } else if (recurring.frequency === 'monthly') {
-                nextDue.setMonth(nextDue.getMonth() + 1);
-            } else if (recurring.frequency === 'yearly') {
-                nextDue.setFullYear(nextDue.getFullYear() + 1);
-            }
-
-            // Update recurring expense with new nextDue
-            await doc.ref.update({ nextDue: nextDue.toISOString() });
-
-            applied.push({
-                id: doc.id,
-                ...recurring,
-            });
         }
 
         res.json({ message: `Applied ${applied.length} recurring expense(s)`, applied });

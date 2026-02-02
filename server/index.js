@@ -35,6 +35,17 @@ app.use('/api/stats', authenticate, analyticsRoutes);
 app.use('/api/budgets', authenticate, budgetsRoutes);
 app.use('/api/recurring', authenticate, recurringRoutes);
 
+// Error handling middleware (must be after all routes)
+app.use((err, req, res, next) => {
+    console.error('❌ Server Error:', err);
+    console.error('Stack:', err.stack);
+    res.status(500).json({
+        code: '500',
+        message: 'A server error has occurred',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
 // Serve React app for all other routes (SPA fallback)
 app.get('*', (req, res) => {
     res.sendFile('index.html', { root: 'dist' });
