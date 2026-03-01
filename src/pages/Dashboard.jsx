@@ -38,10 +38,14 @@ const Dashboard = () => {
 
     const loadDashboardData = async () => {
         try {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString(); // End of month
+
             const [statsRes, alertsRes, expensesRes] = await Promise.all([
                 getStats(),
                 checkBudgets(),
-                getExpenses(),
+                getExpenses({ startDate: firstDay, endDate: lastDay }),
             ]);
 
             setStats(statsRes.data);
