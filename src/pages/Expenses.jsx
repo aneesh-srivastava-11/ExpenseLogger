@@ -67,7 +67,9 @@ const Expenses = () => {
 
     const handleEdit = (expense) => {
         setEditingId(expense.id);
-        setEditForm({ ...expense });
+        // Extract just the YYYY-MM-DD for the date input
+        const dateString = new Date(expense.date).toISOString().split('T')[0];
+        setEditForm({ ...expense, dateStr: dateString });
         setError('');
     };
 
@@ -91,7 +93,21 @@ const Expenses = () => {
         setLoading(true);
 
         try {
-            await updateExpense(editingId, editForm);
+            // Reconstruct full ISODate from the dateStr
+            const selectedDate = new Date(editForm.dateStr);
+            const originalDate = new Date(editForm.date);
+            // Retain original time if same day, otherwise use current time
+            if (selectedDate.toDateString() === originalDate.toDateString()) {
+                selectedDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+            } else {
+                const now = new Date();
+                selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+            }
+
+            const payload = { ...editForm, date: selectedDate.toISOString() };
+            delete payload.dateStr; // Clean up temp field
+
+            await updateExpense(editingId, payload);
             setEditingId(null);
             setEditForm({});
             refresh();
@@ -153,6 +169,7 @@ const Expenses = () => {
                             <input
                                 type="date"
                                 value={startDate}
+                                max={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => setStartDate(e.target.value)}
                             />
                         </div>
@@ -162,6 +179,7 @@ const Expenses = () => {
                             <input
                                 type="date"
                                 value={endDate}
+                                max={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => setEndDate(e.target.value)}
                             />
                         </div>
@@ -222,6 +240,14 @@ const Expenses = () => {
                                                         value={editForm.category}
                                                         onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                                                         placeholder="Category"
+                                                    />
+                                                </div>
+                                                <div className="form-group">
+                                                    <input
+                                                        type="date"
+                                                        value={editForm.dateStr}
+                                                        onChange={(e) => setEditForm({ ...editForm, dateStr: e.target.value })}
+                                                        max={new Date().toISOString().split('T')[0]}
                                                     />
                                                 </div>
                                             </div>

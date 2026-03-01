@@ -723,4 +723,27 @@ h2 {
     justify-content: space-between;
     align-items: center;
   }
+
+  .main-content {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  /* Improve touch targets for mobile */
+  input,
+  select,
+  button {
+    min-height: 44px;
+  }
+
+  .nav-brand .brand-name {
+    font-size: 1.1rem;
+  }
 }
