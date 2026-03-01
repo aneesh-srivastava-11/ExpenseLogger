@@ -50,6 +50,14 @@ app.use((err, req, res, next) => {
     });
 });
 
+// 404 handler for undefined API routes
+app.use('/api/*', (req, res) => {
+    res.status(404).json({
+        code: '404',
+        message: 'API endpoint not found'
+    });
+});
+
 // Serve React app for all other routes (SPA fallback)
 app.get('*', (req, res) => {
     res.sendFile('index.html', { root: 'dist' });
