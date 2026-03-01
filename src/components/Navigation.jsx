@@ -52,7 +52,10 @@ const Navigation = () => {
             {/* Mobile Hamburger */}
             <button
                 className="mobile-menu-btn"
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                onClick={() => {
+                    setShowMobileMenu(!showMobileMenu);
+                    if (!showMobileMenu) setShowProfileMenu(false);
+                }}
             >
                 <div className="hamburger">
                     <span></span>
@@ -63,7 +66,7 @@ const Navigation = () => {
 
             {/* Mobile Menu Overlay */}
             {showMobileMenu && (
-                <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)}>
+                <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)} style={{ zIndex: 1000 }}>
                     <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
                         <div className="mobile-menu-header">
                             <span className="logo">💰</span>
@@ -90,10 +93,13 @@ const Navigation = () => {
             )}
 
             {/* Profile Menu */}
-            <div className="nav-profile">
+            <div className="nav-profile" style={{ zIndex: 1001 }}>
                 <button
                     className="profile-btn"
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    onClick={() => {
+                        setShowProfileMenu(!showProfileMenu);
+                        if (!showProfileMenu) setShowMobileMenu(false);
+                    }}
                 >
                     <div className="profile-avatar">
                         {profile?.name?.charAt(0)?.toUpperCase() || currentUser?.email?.charAt(0)?.toUpperCase() || 'U'}

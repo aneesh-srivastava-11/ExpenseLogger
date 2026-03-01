@@ -8,6 +8,7 @@ import expensesRoutes from './routes/expenses.js';
 import analyticsRoutes from './routes/analytics.js';
 import budgetsRoutes from './routes/budgets.js';
 import recurringRoutes from './routes/recurring.js';
+import cronRoutes from './routes/cron.js';
 
 dotenv.config();
 
@@ -34,6 +35,9 @@ app.use('/api/expenses', authenticate, expensesRoutes);
 app.use('/api/stats', authenticate, analyticsRoutes);
 app.use('/api/budgets', authenticate, budgetsRoutes);
 app.use('/api/recurring', authenticate, recurringRoutes);
+
+// Cron Job Route (Protected by CRON_SECRET, not Firebase Auth)
+app.use('/api/cron', cronRoutes);
 
 // Error handling middleware (must be after all routes)
 app.use((err, req, res, next) => {

@@ -27,5 +27,11 @@
             "source": "/(.*)",
             "destination": "/index.html"
         }
+    ],
+    "crons": [
+        {
+            "path": "/api/cron/apply-recurring",
+            "schedule": "0 0 * * *"
+        }
     ]
 }

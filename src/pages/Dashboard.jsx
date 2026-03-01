@@ -15,13 +15,25 @@ const Dashboard = () => {
         type: 'cash',
         category: '',
         description: '',
+        date: new Date().toISOString().split('T')[0], // Default to today
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [currentDateString, setCurrentDateString] = useState('');
 
     useEffect(() => {
         loadDashboardData();
         checkPendingRecurring();
+
+        // Update current date string every minute to ensure accuracy if left open
+        const updateDateString = () => {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            setCurrentDateString(`Today is ${now.toLocaleDateString('en-US', options)}`);
+        };
+        updateDateString();
+        const interval = setInterval(updateDateString, 60000);
+        return () => clearInterval(interval);
     }, []);
 
     const loadDashboardData = async () => {
@@ -67,12 +79,23 @@ const Dashboard = () => {
         setLoading(true);
 
         try {
+            // Append current time to the selected date to maintain consistent ISO format while respecting user's chosen day
+            const selectedDate = new Date(formData.date);
+            const now = new Date();
+            selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
             await addExpense({
                 ...formData,
-                date: new Date().toISOString(),
+                date: selectedDate.toISOString(),
             });
 
-            setFormData({ amount: '', type: 'cash', category: '', description: '' });
+            setFormData({
+                amount: '',
+                type: 'cash',
+                category: '',
+                description: '',
+                date: new Date().toISOString().split('T')[0]
+            });
             setShowAddForm(false);
             refresh();
             loadDashboardData();
@@ -95,7 +118,12 @@ const Dashboard = () => {
 
             <div className="main-content">
                 <div className="dashboard">
-                    <h1>Dashboard</h1>
+                    <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                        <h1>Dashboard</h1>
+                        <div className="current-date-badge" style={{ background: 'var(--bg-tertiary)', padding: '0.5rem 1rem', borderRadius: '1rem', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            📅 {currentDateString}
+                        </div>
+                    </div>
 
                     {/* Balance Cards */}
                     <div className="balance-cards">
@@ -203,6 +231,17 @@ const Dashboard = () => {
                                             value={formData.category}
                                             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                                             placeholder="Food, Transport, etc."
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Date</label>
+                                        <input
+                                            type="date"
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                            max={new Date().toISOString().split('T')[0]}
                                             required
                                         />
                                     </div>

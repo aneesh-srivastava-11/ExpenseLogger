@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import Navigation from '../components/Navigation';
-import { getStats, getBudgets } from '../utils/api';
+import { getStats, getBudgets, getExpenses } from '../utils/api';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Analytics = () => {
     const [stats, setStats] = useState(null);
     const [budgets, setBudgets] = useState([]);
+
+    // Monthly Report State
+    const [showReport, setShowReport] = useState(false);
+    const [reportMonth, setReportMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [reportData, setReportData] = useState(null);
+    const [generatingReport, setGeneratingReport] = useState(false);
 
     useEffect(() => {
         loadAnalytics();
@@ -22,6 +28,50 @@ const Analytics = () => {
             setBudgets(budgetsRes.data);
         } catch (error) {
             console.error('Failed to load analytics:', error);
+        }
+    };
+
+    const generateReport = async () => {
+        setGeneratingReport(true);
+        try {
+            const res = await getExpenses();
+            const allExpenses = res.data;
+
+            // Filter by selected month
+            const [year, month] = reportMonth.split('-');
+            const filtered = allExpenses.filter(e => {
+                const d = new Date(e.date);
+                return d.getFullYear() === parseInt(year) && d.getMonth() + 1 === parseInt(month);
+            });
+
+            // Calculate aggregations
+            const total = filtered.reduce((sum, e) => sum + e.amount, 0);
+            const byCategory = {};
+            const timeOfDay = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
+
+            filtered.forEach(e => {
+                // Category
+                byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+
+                // Time of Day
+                const hour = new Date(e.date).getHours();
+                if (hour >= 5 && hour < 12) timeOfDay.Morning += e.amount;
+                else if (hour >= 12 && hour < 17) timeOfDay.Afternoon += e.amount;
+                else if (hour >= 17 && hour < 21) timeOfDay.Evening += e.amount;
+                else timeOfDay.Night += e.amount;
+            });
+
+            setReportData({
+                total,
+                count: filtered.length,
+                byCategory: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
+                timeOfDay: Object.entries(timeOfDay).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1])
+            });
+        } catch (error) {
+            console.error('Failed to generate report:', error);
+            alert('Failed to generate report');
+        } finally {
+            setGeneratingReport(false);
         }
     };
 
@@ -58,7 +108,81 @@ const Analytics = () => {
             <Navigation />
 
             <div className="main-content">
-                <h1>Analytics</h1>
+                <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <h1>Analytics</h1>
+                    <button className="btn-primary" onClick={() => setShowReport(true)}>
+                        📄 Generate Monthly Report
+                    </button>
+                </div>
+
+                {/* Monthly Report Modal */}
+                {showReport && (
+                    <div className="mobile-menu-overlay" onClick={() => setShowReport(false)} style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', padding: '2rem', borderRadius: '1rem', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h2>Monthly Spending Report</h2>
+                                <button className="close-btn" onClick={() => setShowReport(false)}>✕</button>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                                <label>Select Month</label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input
+                                        type="month"
+                                        value={reportMonth}
+                                        onChange={e => setReportMonth(e.target.value)}
+                                        max={new Date().toISOString().slice(0, 7)}
+                                        style={{ flex: 1 }}
+                                    />
+                                    <button className="btn-primary" onClick={generateReport} disabled={generatingReport}>
+                                        {generatingReport ? 'Generating...' : 'Run'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {reportData && (
+                                <div className="report-results" style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                                    <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Spent in {new Date(reportMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
+                                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{formatCurrency(reportData.total)}</div>
+                                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Across {reportData.count} transactions</div>
+                                    </div>
+
+                                    {reportData.count > 0 ? (
+                                        <>
+                                            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', marginTop: '1.5rem' }}>Category Breakdown</h3>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {reportData.byCategory.map(([cat, amt]) => (
+                                                    <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--bg-tertiary)', borderRadius: '0.5rem' }}>
+                                                        <span>{cat}</span>
+                                                        <span style={{ fontWeight: 'bold' }}>{formatCurrency(amt)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', marginTop: '1.5rem' }}>When Do You Spend? (Time of Day)</h3>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {reportData.timeOfDay.map(([time, amt]) => (
+                                                    <div key={time} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--bg-tertiary)', borderRadius: '0.5rem' }}>
+                                                        <span>
+                                                            {time === 'Morning' && '🌅 Morning (5AM - 12PM)'}
+                                                            {time === 'Afternoon' && '☀️ Afternoon (12PM - 5PM)'}
+                                                            {time === 'Evening' && '🌆 Evening (5PM - 9PM)'}
+                                                            {time === 'Night' && '🌙 Night (9PM - 5AM)'}
+                                                        </span>
+                                                        <span style={{ fontWeight: 'bold' }}>{formatCurrency(amt)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>No expenses found for this month.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Summary Stats */}
                 <div className="stats-cards">
