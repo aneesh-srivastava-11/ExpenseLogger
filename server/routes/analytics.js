@@ -22,14 +22,24 @@ router.get('/', async (req, res) => {
         }));
 
         // Calculate statistics
-        const now = new Date();
-        const todayStart = new Date(now.setHours(0, 0, 0, 0)).toISOString();
-        const weekStart = new Date(now.setDate(now.getDate() - 7)).toISOString();
-        const monthStart = new Date(now.setDate(1)).toISOString();
+        const originalNow = new Date();
+        const monthStartObj = new Date(originalNow.getFullYear(), originalNow.getMonth(), 1);
 
-        const todayExpenses = expenses.filter(e => e.date >= todayStart);
-        const weekExpenses = expenses.filter(e => e.date >= weekStart);
-        const monthExpenses = expenses.filter(e => e.date >= monthStart);
+        const now = new Date();
+        const todayStartObj = new Date(now.setHours(0, 0, 0, 0));
+
+        const weekNow = new Date();
+        const weekStartObj = new Date(weekNow.setDate(weekNow.getDate() - 7));
+
+        // Strongly bound today and week to not bleed into the previous month
+        const monthStart = monthStartObj.toISOString();
+        const todayStart = todayStartObj > monthStartObj ? todayStartObj.toISOString() : monthStart;
+        const weekStart = weekStartObj > monthStartObj ? weekStartObj.toISOString() : monthStart;
+
+        const todayExpenses = expenses.filter(e => e.date >= todayStart && e.date < new Date(monthStartObj.getFullYear(), monthStartObj.getMonth() + 1, 1).toISOString());
+        const weekExpenses = expenses.filter(e => e.date >= weekStart && e.date < new Date(monthStartObj.getFullYear(), monthStartObj.getMonth() + 1, 1).toISOString());
+        const monthExpenses = expenses.filter(e => e.date >= monthStart && e.date < new Date(monthStartObj.getFullYear(), monthStartObj.getMonth() + 1, 1).toISOString());
+
 
         const stats = {
             today: {

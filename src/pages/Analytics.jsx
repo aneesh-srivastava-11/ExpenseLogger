@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import Navigation from '../components/Navigation';
 import { getStats, getBudgets, getExpenses } from '../utils/api';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import html2pdf from 'html2pdf.js';
+import { useRef } from 'react';
 
 const Analytics = () => {
     const [stats, setStats] = useState(null);
@@ -12,6 +14,19 @@ const Analytics = () => {
     const [reportMonth, setReportMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
     const [reportData, setReportData] = useState(null);
     const [generatingReport, setGeneratingReport] = useState(false);
+    const reportRef = useRef(null);
+
+    const downloadPDF = () => {
+        const element = reportRef.current;
+        const opt = {
+            margin: 0.5,
+            filename: `Expense_Report_${reportMonth}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+    };
 
     useEffect(() => {
         loadAnalytics();
@@ -65,6 +80,7 @@ const Analytics = () => {
                 total,
                 count: filtered.length,
                 byCategory: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
+                categoryPieData: Object.entries(byCategory).map(([name, value]) => ({ name, value })),
                 timeOfDay: Object.entries(timeOfDay).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1])
             });
         } catch (error) {
@@ -121,7 +137,12 @@ const Analytics = () => {
                         <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', padding: '2rem', borderRadius: '1rem', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <h2>Monthly Spending Report</h2>
-                                <button className="close-btn" onClick={() => setShowReport(false)}>✕</button>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {reportData && (
+                                        <button className="btn-primary" onClick={downloadPDF} style={{ padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}>📥 PDF</button>
+                                    )}
+                                    <button className="close-btn" onClick={() => setShowReport(false)}>✕</button>
+                                </div>
                             </div>
 
                             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
@@ -141,7 +162,7 @@ const Analytics = () => {
                             </div>
 
                             {reportData && (
-                                <div className="report-results" style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                                <div className="report-results" ref={reportRef} style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                                     <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Spent in {new Date(reportMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
                                         <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{formatCurrency(reportData.total)}</div>
@@ -151,6 +172,25 @@ const Analytics = () => {
                                     {reportData.count > 0 ? (
                                         <>
                                             <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', marginTop: '1.5rem' }}>Category Breakdown</h3>
+
+                                            <div style={{ height: '220px', marginBottom: '1rem', width: '100%' }}>
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={reportData.categoryPieData}
+                                                            cx="50%" cy="50%" labelLine={false}
+                                                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                                            outerRadius={70} fill="#8884d8" dataKey="value"
+                                                            isAnimationActive={false}
+                                                        >
+                                                            {reportData.categoryPieData.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                 {reportData.byCategory.map(([cat, amt]) => (
                                                     <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--bg-tertiary)', borderRadius: '0.5rem' }}>
