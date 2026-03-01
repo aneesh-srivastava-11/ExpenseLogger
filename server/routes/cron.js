@@ -93,4 +93,44 @@ router.get('/apply-recurring', async (req, res, next) => {
     }
 });
 
+// Secure endpoint for Vercel Cron to trigger on the 1st of every month
+router.get('/monthly-reset', async (req, res, next) => {
+    try {
+        // 1. Verify Vercel Cron Secret for security
+        const authHeader = req.headers.authorization;
+        if (
+            !process.env.CRON_SECRET ||
+            authHeader !== `Bearer ${process.env.CRON_SECRET}`
+        ) {
+            return res.status(401).json({ error: 'Unauthorized to trigger cron' });
+        }
+
+        // 2. Query ALL balance documents across ALL users using Collection Group Query
+        const balanceSnapshot = await db.collectionGroup('balance').get();
+        let resetCount = 0;
+
+        // 3. Reset all balances to 0
+        for (const doc of balanceSnapshot.docs) {
+            // We only care about the 'current' balance document inside the balance collection
+            if (doc.id === 'current') {
+                await doc.ref.update({
+                    cashAmount: 0,
+                    onlineAmount: 0,
+                    updatedAt: new Date().toISOString()
+                });
+                resetCount++;
+            }
+        }
+
+        res.json({
+            message: 'Monthly balance reset executed successfully',
+            processedCount: resetCount
+        });
+
+    } catch (error) {
+        console.error('Monthly reset error:', error);
+        next(error);
+    }
+});
+
 export default router;
