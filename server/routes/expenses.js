@@ -3,6 +3,14 @@ import { db } from '../config/firebase.js';
 
 const router = express.Router();
 
+// Helper to evaluate if the expense belongs to the current month to avoid modifying current balance for past expenses
+const isCurrentMonth = (dateString) => {
+    if (!dateString) return true;
+    const d = new Date(dateString);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+};
+
 // Add expense
 router.post('/', async (req, res) => {
     try {
@@ -43,7 +51,7 @@ router.post('/', async (req, res) => {
         const balanceRef = db.collection('users').doc(uid).collection('balance').doc('current');
         const balanceDoc = await balanceRef.get();
 
-        if (balanceDoc.exists) {
+        if (balanceDoc.exists && isCurrentMonth(expenseData.date)) {
             const currentBalance = balanceDoc.data();
             const updateField = type === 'cash' ? 'cashAmount' : 'onlineAmount';
 
@@ -154,24 +162,34 @@ router.put('/:id', async (req, res) => {
             let newCash = currentBalance.cashAmount;
             let newOnline = currentBalance.onlineAmount;
 
-            if (oldField === 'cashAmount') {
-                newCash += oldExpense.amount;
-            } else {
-                newOnline += oldExpense.amount;
-            }
+            const oldIsCurrent = isCurrentMonth(oldExpense.date);
+            const newIsCurrent = isCurrentMonth(updatedExpense.date);
 
-            // Apply new expense
-            if (type === 'cash') {
-                newCash -= numAmount;
-            } else {
-                newOnline -= numAmount;
-            }
+            if (oldIsCurrent || newIsCurrent) {
+                // Revert old expense if it affected current month
+                if (oldIsCurrent) {
+                    if (oldField === 'cashAmount') {
+                        newCash += oldExpense.amount;
+                    } else {
+                        newOnline += oldExpense.amount;
+                    }
+                }
 
-            await balanceRef.update({
-                cashAmount: newCash,
-                onlineAmount: newOnline,
-                updatedAt: new Date().toISOString(),
-            });
+                // Apply new expense if it affects current month
+                if (newIsCurrent) {
+                    if (type === 'cash') {
+                        newCash -= numAmount;
+                    } else {
+                        newOnline -= numAmount;
+                    }
+                }
+
+                await balanceRef.update({
+                    cashAmount: newCash,
+                    onlineAmount: newOnline,
+                    updatedAt: new Date().toISOString(),
+                });
+            }
         }
 
         res.json({ message: 'Expense updated', expense: updatedExpense });
@@ -203,7 +221,7 @@ router.delete('/:id', async (req, res) => {
         const balanceRef = db.collection('users').doc(uid).collection('balance').doc('current');
         const balanceDoc = await balanceRef.get();
 
-        if (balanceDoc.exists) {
+        if (balanceDoc.exists && isCurrentMonth(expense.date)) {
             const currentBalance = balanceDoc.data();
             const updateField = expense.type === 'cash' ? 'cashAmount' : 'onlineAmount';
 
