@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
 
         const numAmount = Number(amount);
 
-        if (numAmount < 0) {
+        if (isNaN(numAmount) || numAmount < 0) {
             return res.status(400).json({ error: 'Amount cannot be negative' });
         }
 
@@ -36,11 +36,24 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Type must be cash or online' });
         }
 
+        const trimmedCategory = String(category).trim();
+        if (!trimmedCategory) {
+            return res.status(400).json({ error: 'Category cannot be empty' });
+        }
+        if (trimmedCategory.length > 50) {
+            return res.status(400).json({ error: 'Category cannot exceed 50 characters' });
+        }
+
+        const trimmedDescription = description ? String(description).trim() : '';
+        if (trimmedDescription.length > 200) {
+            return res.status(400).json({ error: 'Description cannot exceed 200 characters' });
+        }
+
         const expenseData = {
             amount: numAmount,
             type,
-            category,
-            description: description || '',
+            category: trimmedCategory,
+            description: trimmedDescription,
             date: date || new Date().toISOString(),
             createdAt: new Date().toISOString(),
         };
@@ -129,9 +142,13 @@ router.put('/:id', async (req, res) => {
         const oldExpense = oldExpenseDoc.data();
 
         // Validation
+        if (!amount || !type || !category) {
+            return res.status(400).json({ error: 'Amount, type, and category are required' });
+        }
+
         const numAmount = Number(amount);
 
-        if (numAmount < 0) {
+        if (isNaN(numAmount) || numAmount < 0) {
             return res.status(400).json({ error: 'Amount cannot be negative' });
         }
 
@@ -139,11 +156,28 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({ error: 'Amount cannot exceed 10,000' });
         }
 
+        if (!['cash', 'online'].includes(type)) {
+            return res.status(400).json({ error: 'Type must be cash or online' });
+        }
+
+        const trimmedCategory = String(category).trim();
+        if (!trimmedCategory) {
+            return res.status(400).json({ error: 'Category cannot be empty' });
+        }
+        if (trimmedCategory.length > 50) {
+            return res.status(400).json({ error: 'Category cannot exceed 50 characters' });
+        }
+
+        const trimmedDescription = description ? String(description).trim() : '';
+        if (trimmedDescription.length > 200) {
+            return res.status(400).json({ error: 'Description cannot exceed 200 characters' });
+        }
+
         const updatedExpense = {
             amount: numAmount,
             type,
-            category,
-            description: description || '',
+            category: trimmedCategory,
+            description: trimmedDescription,
             date: date || oldExpense.date,
             createdAt: oldExpense.createdAt,
         };

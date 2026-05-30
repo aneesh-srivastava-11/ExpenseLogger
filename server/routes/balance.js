@@ -31,9 +31,20 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Both cashAmount and onlineAmount are required' });
         }
 
+        const numCash = Number(cashAmount);
+        const numOnline = Number(onlineAmount);
+
+        if (isNaN(numCash) || isNaN(numOnline)) {
+            return res.status(400).json({ error: 'Amounts must be valid numbers' });
+        }
+
+        if (Math.abs(numCash) > 1000000 || Math.abs(numOnline) > 1000000) {
+            return res.status(400).json({ error: 'Amounts cannot exceed 1,000,000' });
+        }
+
         const balanceData = {
-            cashAmount: Number(cashAmount),
-            onlineAmount: Number(onlineAmount),
+            cashAmount: numCash,
+            onlineAmount: numOnline,
             updatedAt: new Date().toISOString(),
         };
 

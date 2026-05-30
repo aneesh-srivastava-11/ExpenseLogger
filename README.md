@@ -1,92 +1,129 @@
 # 💰 Expense Logger PWA
 
-A modern, full-stack Progressive Web App for tracking personal expenses with Firebase authentication and Firestore database.
+A premium, full-stack Progressive Web Application (PWA) designed to track personal finances. Features dual-mode balance tracking (cash and online accounts), smart expense categories, customizable budget thresholds, auto-recurring bills, and a comprehensive analytics dashboard.
 
-## ✨ Features
+Built using React for a fast, responsive user interface, Express.js on the backend, and Firebase for secure Authentication and Firestore Database management.
 
-- **User Authentication** - Email/password login with Firebase Auth
-- **Expense Management** - Add, edit, delete expenses with validation (max ₹10,000)
-- **Dual Balance Tracking** - Separate cash and online balances (red when negative)
-- **Smart Filtering** - Search by description, filter by category and date range
-- **Budget Alerts** - Warnings when spending exceeds 90% of set limits
-- **Recurring Expenses** - Auto-apply recurring bills (rent, subscriptions)
-- **Analytics Dashboard** - Spending trends, category breakdowns, predictions
-- **Mobile Responsive** - ChatGPT-inspired grey theme, works on all devices
-- **PWA Support** - Install on phone, offline caching via service worker
+---
 
-## 🚀 Quick Start
+## ✨ Key Features
+
+- **🔒 Dual Authentication & Access Control**
+  - Secure email/password login and registration powered by Firebase Auth.
+  - Session security enforced via custom client-to-server JWT Bearer tokens.
+  
+- **💵 Dual Account Balances**
+  - Track separate accounts for **Cash** and **Online** transactions.
+  - Real-time balance deductions upon adding, editing, or deleting expenses.
+  - Smart alerts (balances turn red when hitting negative values).
+
+- **🏷️ Expense & Budget Management**
+  - Log expenses with validation (strict server-side limit of ₹10,000 per transaction).
+  - Search by description and filter transactions by category and custom date ranges.
+  - Set limits on custom categories with live progress indicators and alerts when spending exceeds 90% of your budget.
+
+- **🗓️ Automated Recurring Expenses**
+  - Set daily, weekly, monthly, or yearly recurring expenses (subscriptions, rent, utilities).
+  - Client-triggered background application of due recurring expenses.
+  - Serverless Vercel Cron integration for automatic daily execution.
+
+- **📊 Data Analytics & Reporting**
+  - View spending trends over the last 30 days.
+  - Category breakdown and payment method charts powered by `recharts`.
+  - Simple daily average spending calculation and next-month projections.
+  - Generate and download custom PDF Monthly Spending Reports locally.
+
+- **📱 Progressive Web App (PWA) Support**
+  - Add to Home Screen support for mobile devices.
+  - Service worker caching for offline asset delivery and smooth performance.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, React Router, Recharts, Axios, html2pdf.js |
+| **Backend** | Node.js, Express.js, Firebase Admin SDK |
+| **Database** | Google Cloud Firestore |
+| **Auth** | Firebase Authentication |
+| **Styling** | Custom Responsive CSS (ChatGPT-inspired dark grey palette) |
+| **Deployment** | Vercel Serverless Functions |
+
+---
+
+## 🚀 Setup & Installation
 
 ### Prerequisites
+- Node.js 18+ installed on your system.
+- A Google Firebase account.
 
-- Node.js 18+
-- Firebase account
-
-### 1. Install Dependencies
-
+### 1. Clone & Install Dependencies
+Navigate to the root directory of the project and install all client and server dependencies:
 ```bash
 npm install
 ```
 
-### 2. Firebase Setup
+### 2. Configure Firebase console
+1. Open the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+2. Go to **Build** → **Authentication** and enable the **Email/Password** sign-in provider.
+3. Go to **Build** → **Firestore Database** and create a database in Production Mode.
+4. Go to **Project Settings** (gear icon) → **Service Accounts**:
+   - Select **Node.js** and click **Generate new private key**.
+   - Download the generated JSON file; its values will be required for the backend `.env` file.
+5. In **Project Settings** → **General** (scroll to the bottom):
+   - Under *Your apps*, click the `</>` (Web app) icon to register an app.
+   - Copy the `firebaseConfig` object properties; these values are required for the frontend client `.env`.
 
-1. Create a Firebase project at https://console.firebase.google.com/
-2. Enable **Authentication** → Email/Password
-3. Enable **Firestore Database** (production mode)
-4. Create a web app in Project Settings
-5. Download service account JSON (Settings → Service Accounts → Generate Key)
-
-### 3. Environment Variables
-
-Copy `.env.example` to `.env` and fill in your Firebase credentials:
-
+### 3. Setup Environment Variables
+Copy `.env.example` to `.env` at the root of the project:
 ```bash
 cp .env.example .env
 ```
 
-**Required variables:**
-- `VITE_FIREBASE_*` - From Firebase web app config
-- `FIREBASE_PROJECT_ID` - From service account JSON
-- `FIREBASE_PRIVATE_KEY` - From service account JSON (keep quotes and `\n`)
-- `FIREBASE_CLIENT_EMAIL` - From service account JSON
+Open `.env` and fill in the values:
 
-### 4. Run Development Server
+```env
+# Port Configuration
+PORT=5000
+
+# Client-Side Firebase Configuration (Vite prefixed)
+VITE_FIREBASE_API_KEY=your_web_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+
+# Server-Side Firebase Admin Configuration
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAAASDK...\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your_project_id.iam.gserviceaccount.com
+
+# Cron Job Authorization Secret
+CRON_SECRET=your_secure_cron_passphrase
+```
+
+> [!IMPORTANT]
+> Make sure to wrap the `FIREBASE_PRIVATE_KEY` inside quotes and preserve the `\n` characters so the service account certificate initializes properly.
+
+---
+
+## 💻 Running the App Locally
+
+To launch both the Vite client server and the Express backend server concurrently:
 
 ```bash
 npm run dev
 ```
 
-- Frontend: http://localhost:5173
-- Backend: http://localhost:5000
+- **Frontend Application**: `http://localhost:5173`
+- **Backend API Server**: `http://localhost:5000`
 
-## 📁 Project Structure
-
-```
-expenseLogger/
-├── server/                 # Express backend
-│   ├── config/            # Firebase Admin SDK
-│   ├── middleware/        # Auth middleware
-│   ├── routes/            # API routes
-│   └── index.js           # Server entry
-├── src/                   # React frontend
-│   ├── components/        # Reusable components
-│   ├── context/           # Auth & App state
-│   ├── pages/             # Route pages
-│   ├── styles/            # CSS
-│   ├── utils/             # API client, validation
-│   └── config/            # Firebase client SDK
-└── public/                # Static assets, PWA files
-```
-
-## 🎯 Usage
-
-1. **Register** - Create account with name, email, password
-2. **Set Balances** - Profile → Set cash and online amounts
-3. **Add Expenses** - Dashboard → Quick add or Expenses page
-4. **View Analytics** - Analytics → Charts and insights
-5. **Manage Budgets** - Profile → Set category budgets
-6. **Set Recurring** - Profile → Add monthly bills
+---
 
 ## 🔒 Firestore Security Rules
+Ensure the following security rules are applied in the Firestore Database Console to restrict document access strictly to the authenticated owner:
 
 ```javascript
 rules_version = '2';
@@ -99,88 +136,68 @@ service cloud.firestore {
 }
 ```
 
-## 🚢 Deployment (Vercel)
+---
 
-### Option 1: Vercel CLI
+## 📡 API Endpoints Reference
 
+All endpoints (except Health Check and Cron jobs) require a Firebase ID token passed in the Authorization header:
+`Authorization: Bearer <ID_TOKEN>`
+
+### Auth & Profile
+- `GET /api/profile` - Fetch current user profile.
+- `POST /api/profile` - Create or update name/email.
+
+### Balances
+- `GET /api/balance` - Retrieve cash and online amounts.
+- `POST /api/balance` - Manually set initial cash and online balances.
+
+### Expenses
+- `GET /api/expenses` - Retrieve user expenses (supports query filters: `search`, `category`, `startDate`, `endDate`).
+- `POST /api/expense` - Create a new expense.
+- `PUT /api/expense/:id` - Update an existing expense.
+- `DELETE /api/expense/:id` - Delete an expense and adjust current balances.
+
+### Budgets & Alerts
+- `GET /api/budgets` - Get all budgets.
+- `POST /api/budgets` - Create or update spending threshold budgets.
+- `DELETE /api/budgets/:id` - Delete a budget.
+- `GET /api/stats/budget/check` - Check categories against set limits to output alerts.
+
+### Recurring Expenses
+- `GET /api/recurring` - Get list of active recurring subscriptions/charges.
+- `POST /api/recurring` - Add a new subscription with frequency logic.
+- `DELETE /api/recurring/:id` - Delete a recurring configuration.
+- `POST /api/recurring/apply` - Manually check and apply pending bills.
+
+---
+
+## ⏰ Cron Jobs
+
+The application defines serverless crons configured inside `vercel.json` for automated execution:
+
+### 1. Apply Due Recurring Expenses
+- **Route**: `GET /api/cron/apply-recurring`
+- **Schedule**: Everyday at 12:05 AM UTC (`5 0 * * *`)
+- **Required Header**: `Authorization: Bearer <CRON_SECRET>`
+- **Logic**: Automatically scans active schedules, creates transactions for due bills, adjusts balances, and recalculates the next due dates.
+
+### 2. Monthly Reset Endpoint
+- **Route**: `GET /api/cron/monthly-reset`
+- **Schedule**: 1st of every month at 12:00 AM UTC (`0 0 1 * *`)
+- **Required Header**: `Authorization: Bearer <CRON_SECRET>`
+- **Logic**: Keeps Vercel Cron compatibility but safely carries over user balances instead of wiping them to zero.
+
+---
+
+## 🚢 Deployment on Vercel
+
+The application is fully configured for Vercel using `vercel.json`.
+
+### Deploy using Vercel CLI:
 ```bash
 npm install -g vercel
 vercel login
 vercel
 ```
 
-### Option 2: GitHub Integration
-
-1. Push to GitHub
-2. Import in Vercel dashboard
-3. Add environment variables
-4. Deploy
-
-**Important:** Set ALL `.env` variables in Vercel → Settings → Environment Variables
-
-## 📱 Install as PWA
-
-1. Open deployed app in mobile browser
-2. Tap browser menu → "Add to Home Screen"
-3. Use as standalone app
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React 18, Vite, React Router, Recharts
-- **Backend**: Express.js, Firebase Admin SDK
-- **Database**: Firestore
-- **Auth**: Firebase Authentication
-- **Styling**: Custom CSS (ChatGPT-inspired theme)
-- **PWA**: Service Worker, Web App Manifest
-- **Deployment**: Vercel
-
-## 📊 API Endpoints
-
-All routes require Firebase ID token in `Authorization: Bearer <token>` header:
-
-- `GET /api/profile` - Get user profile
-- `POST /api/profile` - Update profile
-- `GET /api/balance` - Get balances
-- `POST /api/balance` - Set balances
-- `POST /api/expense` - Add expense
-- `GET /api/expenses` - Get expenses (with filters)
-- `PUT /api/expense/:id` - Update expense
-- `DELETE /api/expense/:id` - Delete expense
-- `GET /api/stats` - Get analytics
-- `GET /api/stats/budget/check` - Check budget alerts
-- `GET/POST/DELETE /api/budgets` - Manage budgets
-- `GET/POST/DELETE /api/recurring` - Manage recurring
-- `POST /api/recurring/apply` - Apply pending recurring
-
-## 🎨 Color Palette
-
-```css
---bg-primary: #202123      /* Dark grey background */
---bg-secondary: #343541    /* Card background */
---bg-tertiary: #40414f     /* Input background */
---accent: #10a37f          /* Teal primary color */
---error: #ef4444           /* Red for negative */
---warning: #f59e0b         /* Orange for alerts */
-```
-
-## 🐛 Troubleshooting
-
-**Firebase Auth Error**
-- Verify API keys in `.env`
-- Check authorized domains in Firebase Console
-
-**Firestore Permission Denied**
-- Apply security rules above
-- Ensure user is authenticated
-
-**Build Fails**
-- Clear cache: `rm -rf node_modules package-lock.json && npm install`
-- Check Node version: `node --version` (use 18+)
-
-## 📝 License
-
-MIT
-
-## 👨‍💻 Author
-
-Built with ❤️ using React, Express, and Firebase
+Make sure to configure all environment variables listed in the **Setup** section in the Vercel project dashboard under **Settings** → **Environment Variables**.
