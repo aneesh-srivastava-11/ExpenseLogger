@@ -35,6 +35,31 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Invalid frequency' });
         }
 
+        if (!['cash', 'online'].includes(type)) {
+            return res.status(400).json({ error: 'Type must be cash or online' });
+        }
+
+        const numAmount = Number(amount);
+        if (isNaN(numAmount) || numAmount < 0) {
+            return res.status(400).json({ error: 'Amount cannot be negative' });
+        }
+        if (numAmount > 10000) {
+            return res.status(400).json({ error: 'Amount cannot exceed 10,000' });
+        }
+
+        const trimmedCategory = String(category).trim();
+        if (!trimmedCategory) {
+            return res.status(400).json({ error: 'Category cannot be empty' });
+        }
+        if (trimmedCategory.length > 50) {
+            return res.status(400).json({ error: 'Category cannot exceed 50 characters' });
+        }
+
+        const trimmedDescription = description ? String(description).trim() : '';
+        if (trimmedDescription.length > 200) {
+            return res.status(400).json({ error: 'Description cannot exceed 200 characters' });
+        }
+
         // Calculate next due date
         const now = new Date();
         const nextDue = new Date(now);
@@ -50,10 +75,10 @@ router.post('/', async (req, res) => {
         }
 
         const recurringData = {
-            amount: Number(amount),
+            amount: numAmount,
             type,
-            category,
-            description: description || '',
+            category: trimmedCategory,
+            description: trimmedDescription,
             frequency,
             nextDue: nextDue.toISOString(),
             active: true,

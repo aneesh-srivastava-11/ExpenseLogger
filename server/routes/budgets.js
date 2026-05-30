@@ -35,9 +35,25 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Period must be daily, weekly, or monthly' });
         }
 
+        const trimmedCategory = String(category).trim();
+        if (!trimmedCategory) {
+            return res.status(400).json({ error: 'Category cannot be empty' });
+        }
+        if (trimmedCategory.length > 50) {
+            return res.status(400).json({ error: 'Category cannot exceed 50 characters' });
+        }
+
+        const numLimit = Number(limitAmount);
+        if (isNaN(numLimit) || numLimit < 0) {
+            return res.status(400).json({ error: 'Limit amount cannot be negative' });
+        }
+        if (numLimit > 10000) {
+            return res.status(400).json({ error: 'Limit amount cannot exceed 10,000' });
+        }
+
         const budgetData = {
-            category,
-            limitAmount: Number(limitAmount),
+            category: trimmedCategory,
+            limitAmount: numLimit,
             period,
             updatedAt: new Date().toISOString(),
         };

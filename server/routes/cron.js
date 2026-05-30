@@ -35,9 +35,10 @@ router.get('/apply-recurring', async (req, res, next) => {
             const userId = doc.ref.parent.parent.id;
 
             // Check if it's due
-            if (recurring.nextDue && recurring.nextDue.toDate() <= now) {
+            const nextDueParsed = recurring.nextDue ? new Date(recurring.nextDue) : null;
+            if (nextDueParsed && nextDueParsed <= now) {
                 // Determine next due date based on frequency
-                let nextDue = new Date(recurring.nextDue.toDate());
+                let nextDue = new Date(nextDueParsed);
                 switch (recurring.frequency) {
                     case 'daily': nextDue.setDate(nextDue.getDate() + 1); break;
                     case 'weekly': nextDue.setDate(nextDue.getDate() + 7); break;
@@ -57,8 +58,8 @@ router.get('/apply-recurring', async (req, res, next) => {
 
                 await db.collection('users').doc(userId).collection('expenses').add(expenseData);
 
-                // Update the recurring expense's nextDue date
-                await doc.ref.update({ nextDue });
+                // Update the recurring expense's nextDue date as an ISO string
+                await doc.ref.update({ nextDue: nextDue.toISOString() });
 
                 // Update the user's balance
                 const balanceRef = db.collection('users').doc(userId).collection('balance').doc('current');
@@ -77,7 +78,7 @@ router.get('/apply-recurring', async (req, res, next) => {
                     await balanceRef.update(newBalance);
                 }
 
-                appliedRecords.push({ userId, recurringId, nextDue });
+                appliedRecords.push({ userId, recurringId, nextDue: nextDue.toISOString() });
             }
         }
 
@@ -93,7 +94,7 @@ router.get('/apply-recurring', async (req, res, next) => {
     }
 });
 
-// Secure endpoint for Vercel Cron to trigger on the 1st of every month
+// Endpoint kept for Vercel Cron compatibility, but carries over balances instead of resetting them
 router.get('/monthly-reset', async (req, res, next) => {
     try {
         // 1. Verify Vercel Cron Secret for security
@@ -105,26 +106,10 @@ router.get('/monthly-reset', async (req, res, next) => {
             return res.status(401).json({ error: 'Unauthorized to trigger cron' });
         }
 
-        // 2. Query ALL balance documents across ALL users using Collection Group Query
-        const balanceSnapshot = await db.collectionGroup('balance').get();
-        let resetCount = 0;
-
-        // 3. Reset all balances to 0
-        for (const doc of balanceSnapshot.docs) {
-            // We only care about the 'current' balance document inside the balance collection
-            if (doc.id === 'current') {
-                await doc.ref.update({
-                    cashAmount: 0,
-                    onlineAmount: 0,
-                    updatedAt: new Date().toISOString()
-                });
-                resetCount++;
-            }
-        }
-
+        // Balances are now carried over automatically to preserve savings/accumulated balances
         res.json({
-            message: 'Monthly balance reset executed successfully',
-            processedCount: resetCount
+            message: 'Monthly carryover preserved successfully (balances not reset to 0)',
+            processedCount: 0
         });
 
     } catch (error) {
